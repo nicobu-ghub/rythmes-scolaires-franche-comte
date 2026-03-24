@@ -1,17 +1,6 @@
-import requests
 import pandas as pd
 import streamlit as st
 from pathlib import Path
-
-API_URL = (
-    "https://data.education.gouv.fr/api/explore/v2.1/catalog/datasets"
-    "/fr-en-organisation-du-temps-scolaire/records"
-)
-API_EXPORT_URL = (
-    "https://data.education.gouv.fr/api/explore/v2.1/catalog/datasets"
-    "/fr-en-organisation-du-temps-scolaire/exports/csv"
-)
-HEADERS = {"User-Agent": "Mozilla/5.0 (compatible; StreamlitApp/1.0)"}
 
 # Départements historiques de Franche-Comté
 FC_DEPARTMENTS = {
@@ -21,37 +10,10 @@ FC_DEPARTMENTS = {
     "090": "Territoire de Belfort",
 }
 
-DEPT_FILTER = " OR ".join(
-    f'code_departement="{code}"' for code in FC_DEPARTMENTS.keys()
-)
+# Date de la dernière mise à jour du fichier statique
+DATA_LAST_UPDATED = "janvier 2026"
 
-# Chemin du CSV bundlé dans le repo (fallback si l'API est inaccessible)
 _BUNDLED_CSV = Path(__file__).parent / "data_fc.csv"
-
-
-def _fetch_api() -> pd.DataFrame:
-    """Fetch all records from the API with pagination."""
-    records = []
-    limit = 100
-    offset = 0
-    while True:
-        resp = requests.get(
-            API_URL,
-            params={"where": DEPT_FILTER, "limit": limit, "offset": offset},
-            headers=HEADERS,
-            timeout=30,
-        )
-        resp.raise_for_status()
-        payload = resp.json()
-        batch = payload.get("results", [])
-        records.extend(batch)
-        total = payload.get("total_count", 0)
-        offset += limit
-        if offset >= total:
-            break
-    df = pd.DataFrame(records)
-    df.columns = [c.lower() for c in df.columns]
-    return df
 
 
 def _load_bundled_csv() -> pd.DataFrame:
@@ -113,38 +75,21 @@ def _enrich(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
-@st.cache_data(ttl=3600, show_spinner="Chargement des données…")
+@st.cache_data(show_spinner="Chargement des données…")
 def load_data() -> pd.DataFrame:
-    """Load data: try live API first, fall back to bundled CSV."""
-    try:
-        df = _fetch_api()
-        if df.empty:
-            raise ValueError("API returned empty dataset")
-    except Exception as exc:
-        if _BUNDLED_CSV.exists():
-            st.warning(
-                f"API inaccessible ({exc}). Données chargées depuis le fichier local "
-                f"(dernière mise à jour : jan. 2026).",
-                icon="⚠️",
-            )
-            df = _load_bundled_csv()
-        else:
-            st.error(f"Impossible de charger les données : {exc}")
-            return pd.DataFrame()
-
-    return _enrich(df)
+    """Load data from the bundled static CSV."""
+    if not _BUNDLED_CSV.exists():
+        st.error("Fichier de données introuvable.")
+        return pd.DataFrame()
+    return _enrich(_load_bundled_csv())
 
 
 def filter_data(
     df: pd.DataFrame,
-    annee: str | None,
     departements: list[str],
     types: list[str],
 ) -> pd.DataFrame:
     mask = pd.Series(True, index=df.index)
-
-    if annee and annee != "Toutes" and "annee_scolaire" in df.columns:
-        mask &= df["annee_scolaire"] == annee
 
     if departements:
         mask &= df["departement_nom"].isin(departements)

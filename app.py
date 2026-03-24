@@ -4,7 +4,7 @@ import plotly.express as px
 import folium
 from streamlit_folium import st_folium
 
-from data import load_data, filter_data, FC_DEPARTMENTS
+from data import load_data, filter_data, FC_DEPARTMENTS, DATA_LAST_UPDATED
 
 # ── Page config ──────────────────────────────────────────────────────────────
 st.set_page_config(
@@ -29,11 +29,6 @@ if df_all.empty:
 with st.sidebar:
     st.title("Filtres")
 
-    annees = ["Toutes"]
-    if "annee_scolaire" in df_all.columns:
-        annees += sorted(df_all["annee_scolaire"].dropna().unique().tolist(), reverse=True)
-    annee_sel = st.selectbox("Année scolaire", annees)
-
     dept_options = sorted(FC_DEPARTMENTS.values())
     dept_sel = st.multiselect(
         "Département(s)",
@@ -52,11 +47,12 @@ with st.sidebar:
     st.caption(
         "Source : [data.education.gouv.fr](https://data.education.gouv.fr/explore/"
         "dataset/fr-en-organisation-du-temps-scolaire/)  \n"
-        "Licence Ouverte v2.0 (Etalab)"
+        "Licence Ouverte v2.0 (Etalab)  \n"
+        f"Données mises à jour : **{DATA_LAST_UPDATED}**"
     )
 
 # ── Données filtrées ──────────────────────────────────────────────────────────
-df = filter_data(df_all, annee_sel, dept_sel, type_sel)
+df = filter_data(df_all, dept_sel, type_sel)
 
 # ── Titre ─────────────────────────────────────────────────────────────────────
 st.title("🏫 Rythmes scolaires en Franche-Comté")
