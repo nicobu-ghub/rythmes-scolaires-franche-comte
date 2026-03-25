@@ -13,16 +13,74 @@ st.set_page_config(
     layout="wide",
 )
 
-COULEURS = {"4 jours": "#E74C3C", "4,5 jours": "#27AE60"}
+COULEURS = {"4 jours": "#58BEE9", "4,5 jours": "#A8DDD3"}
+
+# ── CSS responsive ────────────────────────────────────────────────────────────
+st.markdown(
+    """
+    <style>
+    /* ── Réduction des marges globales sur mobile ── */
+    @media (max-width: 768px) {
+        .block-container {
+            padding-left: 1rem !important;
+            padding-right: 1rem !important;
+            padding-top: 1rem !important;
+        }
+
+        /* Titre principal plus compact */
+        h1 { font-size: 1.4rem !important; }
+        h2, h3 { font-size: 1.1rem !important; }
+
+        /* Colonnes de métriques : empilées verticalement */
+        [data-testid="column"] {
+            width: 100% !important;
+            flex: 1 1 100% !important;
+            min-width: 0 !important;
+        }
+
+        /* Métriques : texte plus grand pour lisibilité */
+        [data-testid="stMetricValue"] {
+            font-size: 1.6rem !important;
+        }
+        [data-testid="stMetricDelta"] {
+            font-size: 0.95rem !important;
+        }
+
+        /* Carte pleine largeur et hauteur réduite */
+        iframe {
+            height: 320px !important;
+        }
+
+        /* Graphiques Plotly : hauteur réduite */
+        .js-plotly-plot {
+            max-height: 300px;
+        }
+
+        /* Tableau : police plus petite */
+        [data-testid="stDataFrame"] {
+            font-size: 0.75rem !important;
+        }
+
+        /* Bouton téléchargement pleine largeur */
+        [data-testid="stDownloadButton"] > button {
+            width: 100% !important;
+        }
+
+        /* Divider moins d'espace */
+        hr { margin: 0.5rem 0 !important; }
+    }
+
+    /* ── Badges de couleur rythme dans le tableau ── */
+    </style>
+    """,
+    unsafe_allow_html=True,
+)
 
 # ── Chargement ───────────────────────────────────────────────────────────────
 df_all = load_data()
 
 if df_all.empty:
-    st.error(
-        "Impossible de charger les données depuis l'API de l'Éducation nationale. "
-        "Vérifiez votre connexion internet et réessayez."
-    )
+    st.error("Impossible de charger les données.")
     st.stop()
 
 # ── Sidebar — filtres ─────────────────────────────────────────────────────────
@@ -70,16 +128,16 @@ pct_4j = n_4j / total * 100 if total else 0
 pct_45j = n_45j / total * 100 if total else 0
 
 col1, col2, col3 = st.columns(3)
-col1.metric("Total écoles", f"{total:,}".replace(",", " "))
+col1.metric("Total écoles", f"{total:,}".replace(",", "\u202f"))
 col2.metric(
     "4 jours",
-    f"{n_4j:,}".replace(",", " "),
+    f"{n_4j:,}".replace(",", "\u202f"),
     delta=f"{pct_4j:.1f} %",
     delta_color="off",
 )
 col3.metric(
     "4,5 jours",
-    f"{n_45j:,}".replace(",", " "),
+    f"{n_45j:,}".replace(",", "\u202f"),
     delta=f"{pct_45j:.1f} %",
     delta_color="off",
 )
@@ -98,7 +156,7 @@ m = folium.Map(
 )
 
 for _, row in df_map.iterrows():
-    color = "#E74C3C" if row["rythme"] == "4 jours" else "#27AE60"
+    color = COULEURS.get(row["rythme"], "#999")
     tooltip = (
         f"<b>{row.get('nom_etablissement', 'École')}</b><br>"
         f"Commune : {row.get('commune', '—')}<br>"
@@ -111,28 +169,29 @@ for _, row in df_map.iterrows():
         color=color,
         fill=True,
         fill_color=color,
-        fill_opacity=0.8,
+        fill_opacity=0.85,
         tooltip=folium.Tooltip(tooltip),
     ).add_to(m)
 
-# Légende
-legend_html = """
+legend_html = f"""
 <div style="position: fixed; bottom: 30px; left: 30px; z-index: 1000;
      background: white; padding: 10px 15px; border-radius: 8px;
-     box-shadow: 0 2px 6px rgba(0,0,0,.3); font-size: 13px;">
+     box-shadow: 0 2px 6px rgba(0,0,0,.25); font-size: 13px; line-height: 1.8;">
   <b>Rythme scolaire</b><br>
-  <span style="color:#E74C3C;">&#9679;</span> 4 jours<br>
-  <span style="color:#27AE60;">&#9679;</span> 4,5 jours
+  <span style="color:{COULEURS['4 jours']}; font-size:18px;">&#9679;</span>&nbsp;4 jours<br>
+  <span style="color:{COULEURS['4,5 jours']}; font-size:18px;">&#9679;</span>&nbsp;4,5 jours
 </div>
 """
 m.get_root().html.add_child(folium.Element(legend_html))
 
-st_folium(m, width="100%", height=520, returned_objects=[])
+st_folium(m, width="100%", height=480, returned_objects=[])
 
 st.divider()
 
 # ── Graphiques ────────────────────────────────────────────────────────────────
-col_pie, col_bar = st.columns([1, 2])
+# Sur mobile les colonnes se réduisent automatiquement ; on utilise [1,1]
+# pour que le camembert et le bar chart soient visuellement équilibrés
+col_pie, col_bar = st.columns([1, 1])
 
 with col_pie:
     st.subheader("Répartition globale")
@@ -146,8 +205,13 @@ with col_pie:
         color_discrete_map=COULEURS,
         hole=0.4,
     )
-    fig_pie.update_traces(textinfo="percent+value")
-    fig_pie.update_layout(margin=dict(t=20, b=20, l=20, r=20), showlegend=True)
+    fig_pie.update_traces(textinfo="percent+value", textfont_size=13)
+    fig_pie.update_layout(
+        margin=dict(t=10, b=10, l=10, r=10),
+        showlegend=True,
+        legend=dict(orientation="h", y=-0.15),
+        height=300,
+    )
     st.plotly_chart(fig_pie, use_container_width=True)
 
 with col_bar:
@@ -167,7 +231,13 @@ with col_bar:
         labels={"departement_nom": "Département", "rythme": "Rythme"},
         text_auto=True,
     )
-    fig_bar.update_layout(margin=dict(t=20, b=20), legend_title_text="Rythme")
+    fig_bar.update_layout(
+        margin=dict(t=10, b=10, l=10, r=10),
+        legend=dict(orientation="h", y=-0.25),
+        legend_title_text="",
+        xaxis_tickangle=-30,
+        height=300,
+    )
     st.plotly_chart(fig_bar, use_container_width=True)
 
 # ── Répartition par type ──────────────────────────────────────────────────────
@@ -187,7 +257,13 @@ fig_type = px.bar(
     labels={"type_ecole": "Type d'école", "rythme": "Rythme"},
     text_auto=True,
 )
-fig_type.update_layout(margin=dict(t=20, b=20), legend_title_text="Rythme")
+fig_type.update_layout(
+    margin=dict(t=10, b=10, l=10, r=10),
+    legend=dict(orientation="h", y=-0.25),
+    legend_title_text="",
+    xaxis_tickangle=-20,
+    height=320,
+)
 st.plotly_chart(fig_type, use_container_width=True)
 
 st.divider()
@@ -221,7 +297,7 @@ st.dataframe(
         }
     ).reset_index(drop=True),
     use_container_width=True,
-    height=400,
+    height=380,
 )
 
 csv = df[cols_display].to_csv(index=False).encode("utf-8")
@@ -230,4 +306,5 @@ st.download_button(
     data=csv,
     file_name="rythmes_scolaires_franche_comte.csv",
     mime="text/csv",
+    use_container_width=True,
 )
