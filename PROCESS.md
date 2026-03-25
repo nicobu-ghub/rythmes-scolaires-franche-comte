@@ -1,5 +1,27 @@
 # Project Summary — School Schedule Dashboard (Franche-Comté)
 
+## Experience & Takeaways
+
+This project was built as an experiment in two sittings, totalling approximately **1 hour
+and 20 minutes** from blank workspace to live dashboard.
+
+Cursor handled the entire technical side autonomously — API integration, dashboard layout,
+deployment configuration, and live adjustments to colors, filters, and mobile layout — all
+from plain-language instructions. Whenever something broke (authentication, API blocking,
+stale cache), it diagnosed the issue and proposed a fix without requiring manual
+intervention.
+
+The one area where human judgment remained essential was **understanding the underlying
+data**: Cursor applied a deduplication rule literally and initially deleted 15 schools
+that had no 2025-2026 counterpart. Catching that edge case required domain knowledge
+about the dataset, not technical skill.
+
+Overall, this was an overwhelmingly positive experience and a concrete proof of concept
+for using AI-assisted development to build ad-hoc digital tools that solve real,
+day-to-day operational problems — quickly and without a dedicated engineering team.
+
+---
+
 ## Overview
 
 This document traces the full lifecycle of building a Streamlit dashboard that displays
