@@ -75,7 +75,7 @@ def _enrich(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
-@st.cache_data(show_spinner="Chargement des données…")
+@st.cache_data(ttl=None, show_spinner="Chargement des données…")
 def load_data() -> pd.DataFrame:
     """Load data from the bundled static CSV."""
     if not _BUNDLED_CSV.exists():
